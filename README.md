@@ -6,7 +6,7 @@ The content source is [`deployment-strategies.md`](deployment-strategies.md); th
 
 # Page Site
 
-https://github.com/italosalgado14/deployment-strategies/settings/pages
+https://italosalgado14.github.io/deployment-strategies/
 
 ---
 
