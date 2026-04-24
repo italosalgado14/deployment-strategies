@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deployment Strategies Guide</title>
+  <meta name="description" content="A comprehensive reference for deployment strategies, with special focus on MLOps contexts." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">MLOps &middot; DevOps &middot; Release Engineering</div>
+    <h1>Deployment Strategies Guide</h1>
+    <p class="tagline">A comprehensive reference for deployment strategies, with special focus on <strong>MLOps</strong> contexts.</p>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-num">10</span><span class="stat-label">Strategies</span></div>
+      <div class="stat"><span class="stat-num">9</span><span class="stat-label">Diagrams</span></div>
+      <div class="stat"><span class="stat-num">1</span><span class="stat-label">Decision guide</span></div>
+    </div>
+  </div>
+  <button id="theme-toggle" aria-label="Toggle theme" title="Toggle theme">
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+
+<div class="layout">
+
+<aside class="toc" aria-label="Table of contents">
+  <div class="toc-title">On this page</div>
+  <ol>
+    <li><a href="#comparison">Quick Comparison</a></li>
+    <li><a href="#recreate">Recreate</a></li>
+    <li><a href="#rolling">Rolling Update</a></li>
+    <li><a href="#blue-green">Blue-Green</a></li>
+    <li><a href="#canary">Canary</a></li>
+    <li><a href="#ab">A/B Testing</a></li>
+    <li><a href="#shadow">Shadow Deployment</a></li>
+    <li><a href="#flags">Feature Flags</a></li>
+    <li><a href="#mab">Multi-Armed Bandit</a></li>
+    <li><a href="#interleaving">Interleaving</a></li>
+    <li><a href="#champion">Champion / Challenger</a></li>
+    <li><a href="#decision">Decision Guide</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</aside>
+
+<main>
+
+<section id="comparison" class="card">
+  <h2><span class="num">0</span> Quick Comparison</h2>
+  <p class="lead">At-a-glance comparison across the ten strategies covered in this guide.</p>
+  <div class="table-wrap">
+    <table class="compact">
+      <thead>
+        <tr>
+          <th>Strategy</th>
+          <th>Downtime</th>
+          <th>Rollback</th>
+          <th>Infra Cost</th>
+          <th>Risk</th>
+          <th>Best For</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><a href="#recreate">Recreate</a></td><td><span class="pill pill-bad">Yes</span></td><td><span class="pill pill-warn">Slow</span></td><td><span class="pill pill-good">Low</span></td><td><span class="pill pill-bad">High</span></td><td>Dev / incompatible schemas</td></tr>
+        <tr><td><a href="#rolling">Rolling Update</a></td><td><span class="pill pill-good">No</span></td><td><span class="pill pill-warn">Medium</span></td><td><span class="pill pill-good">Low</span></td><td><span class="pill pill-warn">Medium</span></td><td>Stateless services</td></tr>
+        <tr><td><a href="#blue-green">Blue-Green</a></td><td><span class="pill pill-good">No</span></td><td><span class="pill pill-good">Instant</span></td><td><span class="pill pill-bad">High (2x)</span></td><td><span class="pill pill-good">Low</span></td><td>Critical prod releases</td></tr>
+        <tr><td><a href="#canary">Canary</a></td><td><span class="pill pill-good">No</span></td><td><span class="pill pill-good">Fast</span></td><td><span class="pill pill-warn">Medium</span></td><td><span class="pill pill-good">Low</span></td><td>Gradual risk-controlled release</td></tr>
+        <tr><td><a href="#ab">A/B Testing</a></td><td><span class="pill pill-good">No</span></td><td><span class="pill pill-neutral">N/A</span></td><td><span class="pill pill-warn">Medium</span></td><td><span class="pill pill-good">Low</span></td><td>Product experimentation</td></tr>
+        <tr><td><a href="#shadow">Shadow</a></td><td><span class="pill pill-good">No</span></td><td><span class="pill pill-neutral">N/A</span></td><td><span class="pill pill-bad">High</span></td><td><span class="pill pill-good">Very Low</span></td><td>ML model validation</td></tr>
+        <tr><td><a href="#flags">Feature Flags</a></td><td><span class="pill pill-good">No</span></td><td><span class="pill pill-good">Instant</span></td><td><span class="pill pill-good">Low</span></td><td><span class="pill pill-good">Very Low</span></td><td>Decoupling deploy &amp; release</td></tr>
+        <tr><td><a href="#mab">MAB</a></td><td><span class="pill pill-good">No</span></td><td><span class="pill pill-good">Auto</span></td><td><span class="pill pill-warn">Medium</span></td><td><span class="pill pill-good">Low</span></td><td>Multi-variant optimization</td></tr>
+        <tr><td><a href="#interleaving">Interleaving</a></td><td><span class="pill pill-good">No</span></td><td><span class="pill pill-neutral">N/A</span></td><td><span class="pill pill-warn">Medium</span></td><td><span class="pill pill-good">Low</span></td><td>Ranking / recommendation systems</td></tr>
+        <tr><td><a href="#champion">Champion / Challenger</a></td><td><span class="pill pill-good">No</span></td><td><span class="pill pill-good">Fast</span></td><td><span class="pill pill-warn">Med-High</span></td><td><span class="pill pill-good">Low</span></td><td>Continuous ML model evaluation</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="recreate" class="card">
+  <h2><span class="num">1</span> Recreate Deployment</h2>
+  <p class="lead"><strong>Shut down v1 completely, then start v2.</strong> Simple but causes downtime.</p>
+
+  <div class="mermaid">
+flowchart LR
+  A["v1 v1 v1<br/><small>Active</small>"]:::active --> B["⏻ DOWN<br/><small>Downtime</small>"]:::down --> C["v2 v2 v2<br/><small>Active</small>"]:::active2
+  classDef active fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+  classDef down fill:#fee2e2,stroke:#ef4444,color:#7f1d1d
+  classDef active2 fill:#dcfce7,stroke:#22c55e,color:#14532d
+  </div>
+
+  <div class="split">
+    <div>
+      <h3>When to use</h3>
+      <ul class="check">
+        <li>Incompatible database migrations</li>
+        <li>Dev or staging environments</li>
+        <li>Batch jobs where users are not actively connected</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Trade-offs</h3>
+      <table class="tradeoff">
+        <thead><tr><th class="pros">Pros</th><th class="cons">Cons</th></tr></thead>
+        <tbody>
+          <tr><td>Simple to implement</td><td>Downtime required</td></tr>
+          <tr><td>No version coexistence issues</td><td>Slow rollback (full redeploy)</td></tr>
+          <tr><td>Low infra cost</td><td>Bad UX for live users</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="rolling" class="card">
+  <h2><span class="num">2</span> Rolling Update</h2>
+  <p class="lead">Replace instances <strong>gradually</strong>, batch by batch. Default strategy in Kubernetes.</p>
+
+  <div class="rolling-grid">
+    <div class="rolling-row"><span class="step">Step 0</span><span class="box v1">v1</span><span class="box v1">v1</span><span class="box v1">v1</span><span class="box v1">v1</span></div>
+    <div class="rolling-row"><span class="step">Step 1</span><span class="box v2">v2</span><span class="box v1">v1</span><span class="box v1">v1</span><span class="box v1">v1</span></div>
+    <div class="rolling-row"><span class="step">Step 2</span><span class="box v2">v2</span><span class="box v2">v2</span><span class="box v1">v1</span><span class="box v1">v1</span></div>
+    <div class="rolling-row"><span class="step">Step 3</span><span class="box v2">v2</span><span class="box v2">v2</span><span class="box v2">v2</span><span class="box v1">v1</span></div>
+    <div class="rolling-row"><span class="step">Step 4</span><span class="box v2">v2</span><span class="box v2">v2</span><span class="box v2">v2</span><span class="box v2">v2</span></div>
+  </div>
+
+  <div class="split">
+    <div>
+      <h3>Key parameters</h3>
+      <ul class="check">
+        <li><code>maxSurge</code> — how many extra instances can exist during rollout</li>
+        <li><code>maxUnavailable</code> — how many can be down simultaneously</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Trade-offs</h3>
+      <table class="tradeoff">
+        <thead><tr><th class="pros">Pros</th><th class="cons">Cons</th></tr></thead>
+        <tbody>
+          <tr><td>No downtime</td><td>Both versions coexist during rollout</td></tr>
+          <tr><td>No extra infra</td><td>Rollback is slow (another rolling update)</td></tr>
+          <tr><td>Built into K8s, ECS, etc.</td><td>Hard to test v2 in isolation</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="blue-green" class="card">
+  <h2><span class="num">3</span> Blue-Green</h2>
+  <p class="lead">Two <strong>identical environments</strong>. Switch traffic 100% at once.</p>
+
+  <div class="two-diagrams">
+    <div>
+      <div class="diagram-label">Before switch</div>
+      <div class="mermaid">
+flowchart TD
+  LB(["Load Balancer"]):::lb
+  LB -->|100% traffic| BLUE
+  LB -.->|0%| GREEN
+  BLUE["🔵 BLUE<br/>v1 ✅<br/><small>live</small>"]:::blueLive
+  GREEN["🟢 GREEN<br/>v2 💤<br/><small>idle</small>"]:::greenIdle
+  classDef lb fill:#f1f5f9,stroke:#64748b
+  classDef blueLive fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+  classDef greenIdle fill:#f3f4f6,stroke:#9ca3af,color:#4b5563
+      </div>
+    </div>
+    <div>
+      <div class="diagram-label">After switch</div>
+      <div class="mermaid">
+flowchart TD
+  LB(["Load Balancer"]):::lb
+  LB -.->|0%| BLUE
+  LB -->|100% traffic| GREEN
+  BLUE["🔵 BLUE<br/>v1 💤<br/><small>idle</small>"]:::blueIdle
+  GREEN["🟢 GREEN<br/>v2 ✅<br/><small>live</small>"]:::greenLive
+  classDef lb fill:#f1f5f9,stroke:#64748b
+  classDef blueIdle fill:#f3f4f6,stroke:#9ca3af,color:#4b5563
+  classDef greenLive fill:#dcfce7,stroke:#16a34a,color:#14532d
+      </div>
+    </div>
+  </div>
+
+  <h3>Trade-offs</h3>
+  <table class="tradeoff">
+    <thead><tr><th class="pros">Pros</th><th class="cons">Cons</th></tr></thead>
+    <tbody>
+      <tr><td>Instant rollback</td><td>Doubles infra cost</td></tr>
+      <tr><td>Zero downtime</td><td>Stateful services need care (DB, sessions)</td></tr>
+      <tr><td>Easy to test green before switch</td><td>Big-bang switch (no gradual validation)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="canary" class="card">
+  <h2><span class="num">4</span> Canary</h2>
+  <p class="lead">Route a <strong>small percentage</strong> of real traffic to the new version, monitor, then progressively scale up.</p>
+
+  <div class="canary-phases">
+    <div class="phase">
+      <div class="phase-head">Phase 1 <span class="phase-pct">5%</span></div>
+      <div class="bar"><div class="fill-v1" style="width:95%">v1 95%</div><div class="fill-v2" style="width:5%">5%</div></div>
+    </div>
+    <div class="phase">
+      <div class="phase-head">Phase 2 <span class="phase-pct">25%</span></div>
+      <div class="bar"><div class="fill-v1" style="width:75%">v1 75%</div><div class="fill-v2" style="width:25%">v2 25%</div></div>
+    </div>
+    <div class="phase">
+      <div class="phase-head">Phase 3 <span class="phase-pct">50%</span></div>
+      <div class="bar"><div class="fill-v1" style="width:50%">v1 50%</div><div class="fill-v2" style="width:50%">v2 50%</div></div>
+    </div>
+    <div class="phase">
+      <div class="phase-head">Phase 4 <span class="phase-pct">100%</span></div>
+      <div class="bar"><div class="fill-v2" style="width:100%">v2 100%</div></div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div>
+      <h3>Metrics to monitor</h3>
+      <ul class="check">
+        <li>Error rate (4xx, 5xx)</li>
+        <li>Latency (p50, p95, p99)</li>
+        <li>Resource usage (CPU, memory, GPU)</li>
+        <li>In ML: prediction distribution, confidence drift</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Tools</h3>
+      <div class="tag-list">
+        <span class="tag">Flagger</span>
+        <span class="tag">Argo Rollouts</span>
+        <span class="tag">Istio</span>
+        <span class="tag">Linkerd</span>
+        <span class="tag">Seldon Core</span>
+        <span class="tag">KServe</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="ab" class="card">
+  <h2><span class="num">5</span> A/B Testing</h2>
+  <p class="lead">Split traffic between variants to <strong>compare business metrics</strong>. Not a deployment mechanism — an experimentation framework.</p>
+
+  <div class="mermaid">
+flowchart TD
+  U([Users]):::users
+  U -->|50%| A["Variant A"]:::varA
+  U -->|50%| B["Variant B"]:::varB
+  A --> M["📊 Measure<br/>CTR &middot; Conversion<br/>Revenue &middot; Engagement"]:::metric
+  B --> M
+  classDef users fill:#f1f5f9,stroke:#64748b,color:#0f172a
+  classDef varA fill:#e0f2fe,stroke:#0284c7,color:#075985
+  classDef varB fill:#fef3c7,stroke:#d97706,color:#78350f
+  classDef metric fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+  </div>
+
+  <h3>Canary vs A/B Testing</h3>
+  <div class="table-wrap">
+    <table class="compare">
+      <thead>
+        <tr><th>Aspect</th><th>Canary</th><th>A/B Testing</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Goal</strong></td><td>Detect defects</td><td>Measure business impact</td></tr>
+        <tr><td><strong>Domain</strong></td><td>DevOps</td><td>Product / Data Science</td></tr>
+        <tr><td><strong>Duration</strong></td><td>Minutes – hours</td><td>Days – weeks</td></tr>
+        <tr><td><strong>Versions</strong></td><td>Functionally equal</td><td>Intentionally different</td></tr>
+        <tr><td><strong>User assignment</strong></td><td>Random, non-sticky</td><td>Sticky per user</td></tr>
+        <tr><td><strong>Success criteria</strong></td><td>"No regression"</td><td>Statistical significance</td></tr>
+        <tr><td><strong>Rollback</strong></td><td>Automatic on degradation</td><td>Pick winner, retire loser</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="shadow" class="card">
+  <h2><span class="num">6</span> Shadow Deployment <span class="badge">Mirroring</span></h2>
+  <p class="lead">New version receives <strong>mirrored real traffic</strong>, processes it fully, but its output is <strong>discarded</strong> (or only logged). Clients never see v2's output.</p>
+
+  <div class="mermaid">
+flowchart TD
+  C([Client]):::client
+  R{Router}:::router
+  V1["v1 ✅"]:::v1
+  V2["v2 🔇<br/><small>output logged, not returned</small>"]:::v2
+  C -->|request| R
+  R -->|serve| V1
+  R -.->|mirror| V2
+  V1 -->|response| C
+  classDef client fill:#f1f5f9,stroke:#64748b
+  classDef router fill:#fef3c7,stroke:#d97706
+  classDef v1 fill:#dcfce7,stroke:#16a34a,color:#14532d
+  classDef v2 fill:#e0e7ff,stroke:#6366f1,color:#312e81
+  </div>
+
+  <div class="callout callout-star">
+    <h3>⭐ Why it's the gold standard in MLOps</h3>
+    <ul class="check">
+      <li><strong>Zero blast radius</strong>: clients never affected</li>
+      <li>Validates with <strong>real production data</strong> (not offline test sets)</li>
+      <li>Detects data skew, feature corruption, latency issues</li>
+      <li>Enables offline comparison: v1 predictions vs v2 predictions</li>
+    </ul>
+  </div>
+
+  <h3>Typical MLOps flow</h3>
+  <div class="mermaid">
+flowchart LR
+  S["🔇 Shadow<br/><small>validate</small>"]:::sh --> C["🐤 Canary<br/><small>limited real traffic</small>"]:::ca --> F["🚀 Cutover<br/><small>full promotion</small>"]:::fu
+  classDef sh fill:#e0e7ff,stroke:#6366f1,color:#312e81
+  classDef ca fill:#fef3c7,stroke:#d97706,color:#78350f
+  classDef fu fill:#dcfce7,stroke:#16a34a,color:#14532d
+  </div>
+</section>
+
+<section id="flags" class="card">
+  <h2><span class="num">7</span> Feature Flags <span class="badge">Dark Launch</span></h2>
+  <p class="lead">Deploy code to 100% of instances, but keep functionality <strong>behind a flag</strong>. Activate per user, region, cohort, or percentage.</p>
+
+  <div class="flag-visual">
+    <div class="flag-container">
+      <div class="flag-header">Deployed code (all instances)</div>
+      <pre class="code"><span class="kw">if</span> (flag.isEnabled(user)) {
+    <span class="kw">return</span> new_model();   <span class="cm">// ◄── controlled remotely</span>
+} <span class="kw">else</span> {
+    <span class="kw">return</span> old_model();
+}</pre>
+    </div>
+  </div>
+
+  <div class="split">
+    <div>
+      <h3>Use cases</h3>
+      <ul class="check">
+        <li><strong>Kill-switch</strong> for bad features (instant disable, no redeploy)</li>
+        <li>Gradual rollout by user segment</li>
+        <li>Internal dogfooding before public release</li>
+        <li>Geographic rollouts (e.g., EU first, then Americas)</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Tools</h3>
+      <div class="tag-list">
+        <span class="tag">LaunchDarkly</span>
+        <span class="tag">Unleash</span>
+        <span class="tag">Flagsmith</span>
+        <span class="tag">Split.io</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="mab" class="card">
+  <h2><span class="num">8</span> Multi-Armed Bandit <span class="badge">MAB</span></h2>
+  <p class="lead">Dynamic A/B testing: the system <strong>auto-adjusts traffic</strong> toward the winning variant using algorithms like epsilon-greedy, Thompson sampling, or UCB.</p>
+
+  <div class="mab-chart">
+    <div class="mab-row">
+      <div class="mab-label">Initial</div>
+      <div class="mab-bars">
+        <div class="mab-bar mab-a" style="width:50%">A&nbsp;50%</div>
+        <div class="mab-bar mab-b" style="width:50%">B&nbsp;50%</div>
+      </div>
+    </div>
+    <div class="mab-row">
+      <div class="mab-label">Day 3</div>
+      <div class="mab-bars">
+        <div class="mab-bar mab-a" style="width:35%">A&nbsp;35%</div>
+        <div class="mab-bar mab-b" style="width:65%">B&nbsp;65%</div>
+      </div>
+    </div>
+    <div class="mab-row">
+      <div class="mab-label">Day 7</div>
+      <div class="mab-bars">
+        <div class="mab-bar mab-a" style="width:15%">A&nbsp;15%</div>
+        <div class="mab-bar mab-b" style="width:85%">B&nbsp;85%</div>
+      </div>
+    </div>
+    <div class="mab-row">
+      <div class="mab-label">Day 14</div>
+      <div class="mab-bars">
+        <div class="mab-bar mab-a" style="width:5%">A&nbsp;5%</div>
+        <div class="mab-bar mab-b" style="width:95%">B&nbsp;95%</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>MAB vs A/B</h3>
+  <div class="table-wrap">
+    <table class="compare">
+      <thead><tr><th>Aspect</th><th>A/B</th><th>MAB</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Traffic split</strong></td><td>Fixed (e.g., 50/50)</td><td>Dynamic, adaptive</td></tr>
+        <tr><td><strong>Goal</strong></td><td>Statistical significance</td><td>Minimize regret</td></tr>
+        <tr><td><strong>Best for</strong></td><td>Clear hypothesis testing</td><td>Optimization with many variants</td></tr>
+        <tr><td><strong>Analysis complexity</strong></td><td>Standard stats</td><td>More complex</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="interleaving" class="card">
+  <h2><span class="num">9</span> Interleaving</h2>
+  <p class="lead">Specific to <strong>ranking / recommendation systems</strong>. Instead of showing model A to some users and model B to others, mix both models' results in the <strong>same response</strong> and measure which items users interact with.</p>
+
+  <div class="interleave">
+    <div class="interleave-source">
+      <div class="il-label">Model A</div>
+      <div class="il-items"><span class="il a">a1</span><span class="il a">a2</span><span class="il a">a3</span><span class="il a">a4</span><span class="il a">a5</span></div>
+    </div>
+    <div class="interleave-source">
+      <div class="il-label">Model B</div>
+      <div class="il-items"><span class="il b">b1</span><span class="il b">b2</span><span class="il b">b3</span><span class="il b">b4</span><span class="il b">b5</span></div>
+    </div>
+    <div class="arrow-down">▼ interleave ▼</div>
+    <div class="interleave-result">
+      <div class="il-label">Shown to user</div>
+      <div class="il-items">
+        <span class="il a">a1</span>
+        <span class="il b">b1</span>
+        <span class="il a">a2</span>
+        <span class="il b">b2</span>
+        <span class="il a">a3</span>
+        <span class="il b">b3</span>
+        <span class="il a">…</span>
+      </div>
+      <div class="il-note">Track which items get clicked</div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div>
+      <h3>Advantages</h3>
+      <ul class="check">
+        <li><strong>10–100x</strong> more statistically efficient than A/B</li>
+        <li>Same user sees both models → eliminates inter-user variance</li>
+        <li>Faster convergence to significance</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Limitations</h3>
+      <ul class="x">
+        <li>Only applies to ranked lists (search, recommendations, feeds)</li>
+        <li>Requires careful de-biasing of position effects</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="champion" class="card">
+  <h2><span class="num">10</span> Champion / Challenger</h2>
+  <p class="lead">Standard MLOps pattern: the <strong>champion</strong> serves production traffic; one or more <strong>challengers</strong> run in shadow or canary mode. When a challenger consistently beats the champion on defined metrics, it gets promoted.</p>
+
+  <div class="mermaid">
+flowchart TD
+  T([Production traffic]):::traffic
+  T --> CH["🏆 Champion v1<br/><small>serves clients</small>"]:::champ
+  CH -.->|shadow copy| C1["Challenger 1 v2<br/><small>metrics logged</small>"]:::chal
+  CH -.->|shadow copy| C2["Challenger 2 v3<br/><small>metrics logged</small>"]:::chal
+  classDef traffic fill:#f1f5f9,stroke:#64748b
+  classDef champ fill:#fef3c7,stroke:#d97706,color:#78350f
+  classDef chal fill:#e0e7ff,stroke:#6366f1,color:#312e81
+  </div>
+
+  <div class="callout callout-rule">
+    <div class="callout-title">Auto-promotion rule</div>
+    <pre class="code"><span class="kw">if</span> challenger.AUC &gt; champion.AUC + <span class="num-lit">0.02</span>
+   <span class="kw">for</span> <span class="num-lit">7</span> consecutive days
+   <span class="kw">with</span> p &lt; <span class="num-lit">0.05</span>
+→ <span class="kw">promote</span> to champion</pre>
+  </div>
+
+  <h3>Tools</h3>
+  <div class="tag-list">
+    <span class="tag">MLflow Model Registry</span>
+    <span class="tag">Vertex AI</span>
+    <span class="tag">SageMaker</span>
+    <span class="tag">Databricks Model Serving</span>
+  </div>
+</section>
+
+<section id="decision" class="card">
+  <h2><span class="num">★</span> Decision Guide</h2>
+
+  <h3>By primary goal</h3>
+  <div class="table-wrap">
+    <table class="decision">
+      <thead><tr><th>If your goal is…</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td>Zero-risk validation with real data</td><td><a href="#shadow" class="strategy-pick">Shadow</a></td></tr>
+        <tr><td>Detect technical regressions safely</td><td><a href="#canary" class="strategy-pick">Canary</a></td></tr>
+        <tr><td>Measure business KPI improvement</td><td><a href="#ab" class="strategy-pick">A/B Testing</a></td></tr>
+        <tr><td>Instant rollback on critical service</td><td><a href="#blue-green" class="strategy-pick">Blue-Green</a></td></tr>
+        <tr><td>Decouple deploy from release</td><td><a href="#flags" class="strategy-pick">Feature Flags</a></td></tr>
+        <tr><td>Continuous ML model improvement</td><td><a href="#champion" class="strategy-pick">Champion / Challenger</a></td></tr>
+        <tr><td>Optimize among many variants</td><td><a href="#mab" class="strategy-pick">MAB</a></td></tr>
+        <tr><td>Evaluate ranking models efficiently</td><td><a href="#interleaving" class="strategy-pick">Interleaving</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Recommended MLOps stack</h3>
+  <div class="stack">
+    <div class="stack-step">
+      <div class="stack-num">1</div>
+      <div class="stack-body">
+        <div class="stack-title">Shadow</div>
+        <div class="stack-desc">Validate technically — real data, no client impact</div>
+      </div>
+    </div>
+    <div class="stack-arrow">↓</div>
+    <div class="stack-step">
+      <div class="stack-num">2</div>
+      <div class="stack-body">
+        <div class="stack-title">Canary 5–25%</div>
+        <div class="stack-desc">Validate with real users — limited blast radius</div>
+      </div>
+    </div>
+    <div class="stack-arrow">↓</div>
+    <div class="stack-step">
+      <div class="stack-num">3</div>
+      <div class="stack-body">
+        <div class="stack-title">A/B 50/50</div>
+        <div class="stack-desc">Measure business impact — statistical significance</div>
+      </div>
+    </div>
+    <div class="stack-arrow">↓</div>
+    <div class="stack-step">
+      <div class="stack-num">4</div>
+      <div class="stack-body">
+        <div class="stack-title">Full cutover</div>
+        <div class="stack-desc">Blue-green switch — 100% promotion</div>
+      </div>
+    </div>
+    <div class="stack-wrap">
+      🚩 Feature flags wrap all stages as a kill-switch
+    </div>
+  </div>
+
+  <div class="callout callout-key">
+    <div class="callout-title">Key principle</div>
+    <p><strong>Strategies are composable, not mutually exclusive.</strong> A mature MLOps pipeline typically combines <em>shadow + canary + feature flags + champion/challenger</em> evaluation, with <em>blue-green</em> as the final promotion mechanism.</p>
+  </div>
+</section>
+
+<section id="glossary" class="card">
+  <h2><span class="num">§</span> Glossary</h2>
+  <dl class="glossary">
+    <dt>Blast radius</dt>
+    <dd>Scope of users/systems affected if a deployment fails.</dd>
+
+    <dt>Cutover</dt>
+    <dd>The moment traffic is fully switched from old to new version.</dd>
+
+    <dt>Regret <span class="muted">(MAB)</span></dt>
+    <dd>Loss from serving a suboptimal variant during exploration.</dd>
+
+    <dt>Skew <span class="muted">(ML)</span></dt>
+    <dd>Mismatch between training data and production data distributions.</dd>
+
+    <dt>SLO</dt>
+    <dd>Service Level Objective — quantitative reliability target.</dd>
+
+    <dt>Sticky session</dt>
+    <dd>Ensuring a user consistently sees the same variant.</dd>
+  </dl>
+</section>
+
+</main>
+</div>
+
+<footer class="site-footer">
+  <div>
+    <span>Deployment Strategies Guide</span>
+    <span class="sep">·</span>
+    <a href="deployment-strategies.md">Source markdown</a>
+  </div>
+</footer>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  window.__mermaid = mermaid;
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDark ? 'dark' : 'default',
+    securityLevel: 'loose',
+    fontFamily: 'Inter, system-ui, sans-serif'
+  });
+</script>
+<script src="assets/main.js"></script>
+
+</body>
+</html>
