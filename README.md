@@ -4,6 +4,10 @@ A static reference site covering **10 deployment strategies** (Recreate, Rolling
 
 The content source is [`deployment-strategies.md`](deployment-strategies.md); the site is a hand-written HTML/CSS/JS rendering of that content, built to be hosted on GitHub Pages.
 
+# Page Site
+
+https://github.com/italosalgado14/deployment-strategies/settings/pages
+
 ---
 
 ## Purpose
