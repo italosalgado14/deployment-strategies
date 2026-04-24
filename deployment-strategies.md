@@ -2,6 +2,10 @@
 
 A comprehensive reference for deployment strategies, with special focus on **MLOps** contexts.
 
+# Page Site
+
+https://github.com/italosalgado14/deployment-strategies/settings/pages
+
 ---
 
 ## Table of Contents
